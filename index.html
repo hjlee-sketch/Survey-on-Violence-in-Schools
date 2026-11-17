@@ -239,6 +239,7 @@ const goNext=from=>{const n=nextId(from);if(n===null){submit();return}show(n)};
 const ask=(c,ok)=>{$('#mm').textContent=c.m;$('#my').textContent=OKY;$('#mn').textContent=OKN;$('#mk').hidden=false;$('#my').onclick=()=>{$('#mk').hidden=true;ok()};$('#mn').onclick=()=>{$('#mk').hidden=true};$('#mn').focus()};
 const begin=(c,cid)=>{ack.add(c.k);acked.set(c.k,{id:cid||cur});(c.sync||[]).forEach(([id,r])=>{adj.push({question:id,row:r+1,from:a[id][r]+1,to:1,code:c.k});a[id][r]=0;const i=f.querySelector(`[name="${id}|${r}"][value="0"]`);if(i)i.checked=true});
 const L=[...(c.pull||[]),...(c.fu||[]).filter(id=>(!M[id].f||M[id].f())&&!done(M[id]))];
+if(pl){const rem=pl.q.filter(x=>!L.includes(x));pl.q=[...L,...rem];L.forEach(id=>pulled.add(id));if(pl.q.length){show(pl.q.shift());return}const r=pl.res;pl=null;goNext(r);return}
 if(!L.length){goNext(cur);return}
 pl={res:cur,q:L};L.forEach(id=>pulled.add(id));show(pl.q.shift())};
 $('#prev').onclick=()=>{if(pl){const r=pl.res;pl=null;show(r);return}show(prevId(cur))};
@@ -247,12 +248,13 @@ if(cur===null){show(vis()[0].id);return}
 const ids=(pl?[cur]:groupIds(cur)).filter(id=>!M[id].f||M[id].f());
 const miss=ids.filter(id=>!done(M[id]));
 if(miss.length){miss.forEach(id=>$('#'+id).classList.add('err'));$('#'+miss[0]).scrollIntoView({behavior:'smooth',block:'center'});return}
-if(pl){if(pl.q.length){show(pl.q.shift());return}const r=pl.res;pl=null;goNext(r);return}
 for(const id of ids){const c=CK(id);if(c&&!ack.has(c.k)){ask(c,()=>begin(c,id));return}}
+if(pl){if(pl.q.length){show(pl.q.shift());return}const r=pl.res;pl=null;goNext(r);return}
 goNext(cur)};
 async function submit(){
-const out={submittedAt:new Date().toISOString(),answers:{},etc:{},anomalies:[],adjusted:adj};
+const out={submittedAt:new Date().toISOString(),answers:{},etc:{},anomalies:[],adjusted:[]};
 Q.forEach(q=>{if(q.f&&!q.f())return;const v=a[q.id];if(v===undefined)return;out.answers[q.id]=q.k==='p'?v:Array.isArray(v)?Array.from(v,x=>x+1):v+1;if(q.e>=0&&(q.k==='m'?has(q.id,q.e):v===q.e)&&etc[q.id]!==undefined)out.etc[q.id]=etc[q.id]});
+out.adjusted=adj.filter(x=>Array.isArray(out.answers[x.question])&&out.answers[x.question][x.row-1]===x.to);
 // ▼ 특이사항: 경고에서 '맞다'고 확정했고 제출 시점에도 모순이 남아 있는 문항
 acked.forEach(({id},k)=>{const q=M[id];if(q.f&&!q.f())return;const n=CK(id);if(!n||n.k!==k)return;out.anomalies.push({code:k,type:n.t,question:id,questions:n.qs,note:n.m.split('\n')[0],answers:Object.fromEntries(n.qs.filter(x=>out.answers[x]!==undefined).map(x=>[x,out.answers[x]]))})});
 out.hasAnomaly=out.anomalies.length>0;out.anomalyQuestions=[...new Set(out.anomalies.flatMap(x=>x.questions))];
