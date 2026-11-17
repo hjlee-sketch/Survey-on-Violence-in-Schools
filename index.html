@@ -45,6 +45,7 @@ h2{font-size:13px;font-weight:700;color:var(--gr);margin:0 0 20px;letter-spacing
 .c:has(input:focus-visible){outline:2px solid var(--gr);outline-offset:-2px}
 .c:has(input:disabled),.c.dis{opacity:.52;cursor:not-allowed;background:#e4dccb;color:var(--mu)}
 .c.dis span::after{content:" (중학교는 선택할 수 없어요)";font-size:13px;color:var(--mu)}
+.c.dis.hs span::after{content:" (고등학교는 선택할 수 없어요)"}
 .r .g{display:flex;flex-wrap:wrap;gap:6px;border-top:0}
 .r .c{flex:1 1 auto;min-height:40px;padding:8px 12px;font-size:15px;background:var(--cd);border:1px solid var(--ln);border-radius:6px}
 .r .c:has(input:checked){box-shadow:none;border-color:var(--gr)}
@@ -192,13 +193,13 @@ let b;if(q.k==='g')b=q.r.map((r,j)=>`<div class="r"><p>${r}</p><div class="g">${
 else if(q.k==='p')b=(q.pn?`<p class="pn">${q.pn}</p>`:'')+`<input class="pi" type="tel" inputmode="numeric" autocomplete="tel" name="${q.id}" maxlength="13" placeholder="(예시) 010-XXXX-XXXX (숫자만 입력해도 돼요)">`;
 else b=`<div class="g">${q.o.map((o,i)=>chip(q,i,o,q.id,q.k==='m'?'checkbox':'radio')).join('')}</div>`+(q.e>=0?`<input class="e" name="e_${q.id}" placeholder="직접 적어 주세요" hidden>`:'');
 f.insertAdjacentHTML('beforeend',`<section class="box q${q.id.includes('_')?' sub':''}" id="${q.id}" hidden>${q.s?`<h2>${q.s}</h2>${q.n?`<p class="n">${q.n}</p>`:''}`:''}${q.id.includes('_')?`<div class="ctx"><span class="tg">하위 문항</span>${lab(q.id.split('_')[0])}) ${M[q.id.split('_')[0]].t}</div>`:''}<b><i>${lab(q.id)})</i>${q.t}</b>${q.nt?`<p class="n" style="margin:-10px 0 14px">${q.nt}</p>`:''}${b}${q.h?`<div class="hot">${q.h}</div>`:''}</section>`)});
-const done=q=>{const v=a[q.id];if(q.id==='sq1'&&a.sq0!==undefined&&a.sq0<2&&v===1)return false;if(q.k==='p')return /^01[016789]\d{7,8}$/.test((v||'').replace(/\D/g,''));return q.k==='g'?!!v&&v.length===q.r.length&&Array.from(v).every(x=>x!==undefined):q.k==='m'?!!v&&v.length>0:v!==undefined};
+const done=q=>{const v=a[q.id];if(q.id==='sq1'&&a.sq0!==undefined&&a.sq0<2&&v===1)return false;if(q.id==='sq2'&&a.sq0!==undefined&&(a.sq0<2)!==(v<3))return false;if(q.k==='p')return /^01[016789]\d{7,8}$/.test((v||'').replace(/\D/g,''));return q.k==='g'?!!v&&v.length===q.r.length&&Array.from(v).every(x=>x!==undefined):q.k==='m'?!!v&&v.length>0:v!==undefined};
 // ▼ 캐릭터 이동 방향: true = 오른쪽→왼쪽, false = 왼쪽→오른쪽
 const RTL=false;let cur=null,fin=false;
 const GRP1=['sq0','sq1','sq2'],GRP2=['q38','phone'],groupIds=id=>id==='sq0'?GRP1:id==='q38'?GRP2:[id],anchorOf=id=>GRP1.includes(id)?'sq0':GRP2.includes(id)?'q38':id;
 const vis=()=>Q.filter(q=>!q.f||q.f());
 $('#fl').style[RTL?'right':'left']='0';$('#fg').style[RTL?'left':'right']='0';if(RTL)$('.em').style.setProperty('--fx',-1);
-function upd(){const ms=a.sq0!==undefined&&a.sq0<2,fIn=f.querySelector('[name="sq1"][value="1"]');if(fIn){fIn.disabled=ms;fIn.closest('.c').classList.toggle('dis',ms);if(ms&&a.sq1===1){delete a.sq1;fIn.checked=false}}let k=0;const V=vis(),visSet=new Set(pl?[cur]:groupIds(cur));Q.forEach(q=>{const el=$('#'+q.id),s=!q.f||q.f();el.hidden=!(s&&visSet.has(q.id));
+function upd(){const hasSch=a.sq0!==undefined,ms=hasSch&&a.sq0<2,hs=hasSch&&a.sq0===2,fIn=f.querySelector('[name="sq1"][value="1"]');if(fIn){fIn.disabled=ms;fIn.closest('.c').classList.toggle('dis',ms);if(ms&&a.sq1===1){delete a.sq1;fIn.checked=false}}f.querySelectorAll('[name="sq2"]').forEach(gIn=>{const gv=+gIn.value,dis=(ms&&gv>=3)||(hs&&gv<3),lb=gIn.closest('.c');gIn.disabled=dis;lb.classList.toggle('dis',dis);lb.classList.toggle('hs',dis&&hs);if(dis&&a.sq2===gv){delete a.sq2;gIn.checked=false}});let k=0;const V=vis(),visSet=new Set(pl?[cur]:groupIds(cur));Q.forEach(q=>{const el=$('#'+q.id),s=!q.f||q.f();el.hidden=!(s&&visSet.has(q.id));
 if(!s){el.classList.remove('err');return}
 if(done(q)){k++;el.classList.remove('err')}
 if(q.e>=0){const i=el.querySelector('.e'),on=q.k==='m'?has(q.id,q.e):a[q.id]===q.e;i.hidden=!on}
@@ -225,7 +226,6 @@ for(const[g,p,c,fu,lb]of GRP){
 if(id===p&&a[g]===0&&none(p))return{k:'A'+p,t:'게이트-하위 문항 불일치',qs:[g,p],m:`앞에서는 ${lb} 경험이 '있다'고 답했는데, 여기서는 모든 항목에 '없음'을 골랐어요.\n\n지금 고른 답이 맞나요?`,pull:[g]};
 if(id===c&&a[p]&&a[p][0]===1&&any(c))return{k:'B'+c,t:'사이버폭력 없음→있음',qs:[p,c],m:`앞에서는 ${lb} 사이버폭력이 '없음'이라고 했는데, 여기서는 '있음'을 골랐어요.\n\n지금 고른 답이 맞나요?`,sync:[[p,0]],fu};
 if(id===c&&yes0(p)&&none(c))return{k:'C'+c,t:'사이버폭력 있음→전부 없음',qs:[p,c],m:`앞에서는 ${lb} 사이버폭력이 '있음'이라고 했는데, 여기서는 모든 항목에 '없음'을 골랐어요.\n\n지금 고른 답이 맞나요?`,pull:[p]}}
-if(id==='sq2'&&a.sq0!==undefined&&(a.sq0<2)!==(a.sq2<3))return{k:'sq2',t:'학교-학년 불일치',qs:['sq0','sq2'],m:`앞에서는 ${M.sq0.o[a.sq0]}에 다닌다고 했는데, 여기서는 '${M.sq2.o[a.sq2]}'을 골랐어요.\n\n지금 고른 답이 맞나요?`,pull:[]};
 if(id==='q6'){const x=has('q6',0),y=has('q6',1),z=has('q6',2);if(x&&(y||z)||y&&z)return{k:'q6',t:'q6 선택 충돌',qs:['q6'],m:`'가만히 있었다', '피해학생을 도왔다', '가해학생의 편을 들었다'가 서로 맞지 않게 같이 골라져 있어요.\n\n지금 고른 답이 맞나요?`,pull:[]}}
 if(id==='q26'&&a.q25===1&&(a.q26||[]).some(x=>x>0))return{k:'q26',t:'신고당한 적 없음-조치 있음',qs:['q25','q26'],m:`앞에서는 신고당한 적이 '없다'고 했는데, 여기서는 받은 조치가 있다고 골랐어요.\n\n지금 고른 답이 맞나요?`,pull:['q25']};
 if(id==='q16_1'&&a.q14===1&&has('q16_1',0))return{k:'q16_1',t:'사과 못 받음-사과로 해결',qs:['q14','q16_1'],m:`앞에서는 가해학생에게 사과를 받은 적이 '없다'고 했는데, 여기서는 '사과를 받아서' 해결됐다고 골랐어요.\n\n지금 고른 답이 맞나요?`,pull:['q14']};
