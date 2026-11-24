@@ -91,7 +91,7 @@ button:focus-visible{outline:2px solid var(--gr);outline-offset:2px}
 <form id="f" onsubmit="return false"></form>
 <div class="nv"><button id="prev" class="sec" hidden>이전</button><button id="sub">시작하기</button></div>
 <p id="serr" class="n" style="color:#c92d18;margin:10px 0 0;text-align:center;font-weight:600" hidden></p>
-<div id="done" class="box" hidden><div class="logos"><img data-l="kw" alt="광운학원" onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:this.alt}))"><img data-l="btf" alt="BTF푸른나무재단" onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:this.alt}))"></div><h1>설문이 끝났어요</h1><p id="dm"></p>
+<div id="done" class="box" hidden><div class="logos"><img data-l="kw" alt="광운학원" onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:this.alt}))"><img data-l="btf" alt="BTF푸른나무재단" onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:this.alt}))"></div><h1>모든 설문이 끝났습니다.</h1><p id="dm"></p>
 <div class="hot">힘든 일이 있으면 혼자 고민하지 말고 <b>1588-9128</b>(구원의팔), <b>117</b>, <b>1388</b> 중 편한 곳에 이야기해 주세요.</div></div>
 </main>
 <div id="mk" class="mk" hidden><div class="mb" role="alertdialog" aria-modal="true" aria-labelledby="mt"><h3 id="mt">답을 한 번 더 확인해 주세요</h3><p id="mm"></p><div class="ma"><button id="my"></button><button id="mn" class="sec"></button></div></div></div>
@@ -262,8 +262,14 @@ out.adjusted=adj.filter(x=>Array.isArray(out.answers[x.question])&&out.answers[x
 // ▼ 특이사항: 경고에서 '맞다'고 확정했고 제출 시점에도 모순이 남아 있는 문항
 acked.forEach(({id},k)=>{const q=M[id];if(q.f&&!q.f())return;const n=CK(id);if(!n||n.k!==k)return;out.anomalies.push({code:k,type:n.t,question:id,questions:n.qs,note:n.m.split('\n')[0],answers:Object.fromEntries(n.qs.filter(x=>out.answers[x]!==undefined).map(x=>[x,out.answers[x]]))})});
 out.hasAnomaly=out.anomalies.length>0;out.anomalyQuestions=[...new Set(out.anomalies.flatMap(x=>x.questions))];
-const body=JSON.stringify(out);sb.disabled=true;pv.disabled=true;sb.textContent='제출 중...';let msg='응답이 제출됐어요. 고마워요.';
-if(ENDPOINT){const ac=typeof AbortController!=='undefined'?new AbortController():null,tm=ac?setTimeout(()=>ac.abort(),12000):0;try{await fetch(ENDPOINT,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body,signal:ac?ac.signal:undefined})}catch(e){if(tm)clearTimeout(tm);submitting=false;sb.disabled=false;pv.disabled=false;sb.textContent='제출하기';if(se){se.textContent='제출이 지연되거나 실패했어요. 네트워크 확인 후 다시 제출하기를 눌러 주세요.';se.hidden=false}try{alert('제출이 지연되거나 실패했어요. 네트워크를 확인하고 다시 시도해 주세요.')}catch(_){}return}if(tm)clearTimeout(tm)}
+const body=JSON.stringify(out);sb.disabled=true;pv.disabled=true;sb.textContent='제출 중...';let msg='올 한해 학교에서 있었던 일에 대해서 솔직하게 답변해줘서 고맙습니다.<br>여러분의 소중한 의견을 바탕으로 우리 학교가 더욱 행복한 학교가 될 수 있도록 <span class="btf">BTF푸른나무재단</span>이 언제나 곁에서 함께하겠습니다.';
+if(ENDPOINT){if(typeof navigator!=='undefined'&&navigator.onLine===false){submitting=false;sb.disabled=false;pv.disabled=false;sb.textContent='제출하기';if(se){se.textContent='인터넷 연결을 확인한 뒤 다시 제출하기를 눌러 주세요.';se.hidden=false}try{alert('인터넷 연결을 확인한 뒤 다시 시도해 주세요.')}catch(_){}return}
+const wait=ms=>new Promise(r=>setTimeout(r,ms)),t0=Date.now();
+const opt={method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body};
+if(new Blob([body]).size<60000)opt.keepalive=true;
+const req=fetch(ENDPOINT,opt).catch(()=>{try{if(navigator.sendBeacon)navigator.sendBeacon(ENDPOINT,new Blob([body],{type:'text/plain'}))}catch(_){}});
+await Promise.race([req,wait(4200)]);
+const rem=3500-(Date.now()-t0);if(rem>0)await wait(rem)}
 else{msg='테스트 모드: 서버로 전송되지 않았어요. 아래 링크로 응답 파일을 저장할 수 있어요. <br><a download="response.json" href="'+URL.createObjectURL(new Blob([body],{type:'application/json'}))+'">응답 JSON 저장</a>'}
 submitting=false;fin=true;f.hidden=$('.nv').hidden=true;upd();$('#dm').innerHTML=msg;$('#done').hidden=false;scrollTo(0,0)};
 upd();
