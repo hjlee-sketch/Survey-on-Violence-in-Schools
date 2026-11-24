@@ -256,7 +256,8 @@ let submitting=false;
 async function submit(){
 if(submitting)return;submitting=true;
 const sb=$('#sub'),pv=$('#prev'),se=$('#serr');if(se)se.hidden=true;
-const out={submittedAt:new Date().toISOString(),answers:{},etc:{},anomalies:[],adjusted:[]};
+const sid=(typeof crypto!=='undefined'&&crypto.randomUUID)?crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,10);
+const out={submissionId:sid,submittedAt:new Date().toISOString(),answers:{},etc:{},anomalies:[],adjusted:[]};
 Q.forEach(q=>{if(q.f&&!q.f())return;const v=a[q.id];if(v===undefined)return;out.answers[q.id]=q.k==='p'?v:Array.isArray(v)?Array.from(v,x=>x+1):v+1;if(q.e>=0&&(q.k==='m'?has(q.id,q.e):v===q.e)&&etc[q.id]!==undefined)out.etc[q.id]=etc[q.id]});
 out.adjusted=adj.filter(x=>Array.isArray(out.answers[x.question])&&out.answers[x.question][x.row-1]===x.to);
 // ▼ 특이사항: 경고에서 '맞다'고 확정했고 제출 시점에도 모순이 남아 있는 문항
@@ -264,11 +265,31 @@ acked.forEach(({id},k)=>{const q=M[id];if(q.f&&!q.f())return;const n=CK(id);if(!
 out.hasAnomaly=out.anomalies.length>0;out.anomalyQuestions=[...new Set(out.anomalies.flatMap(x=>x.questions))];
 const body=JSON.stringify(out);sb.disabled=true;pv.disabled=true;sb.textContent='제출 중...';let msg='올 한해 학교에서 있었던 일에 대해서 솔직하게 답변해줘서 고맙습니다.<br>여러분의 소중한 의견을 바탕으로 우리 학교가 더욱 행복한 학교가 될 수 있도록 <span class="btf">BTF푸른나무재단</span>이 언제나 곁에서 함께하겠습니다.';
 if(ENDPOINT){if(typeof navigator!=='undefined'&&navigator.onLine===false){submitting=false;sb.disabled=false;pv.disabled=false;sb.textContent='제출하기';if(se){se.textContent='인터넷 연결을 확인한 뒤 다시 제출하기를 눌러 주세요.';se.hidden=false}try{alert('인터넷 연결을 확인한 뒤 다시 시도해 주세요.')}catch(_){}return}
-const wait=ms=>new Promise(r=>setTimeout(r,ms)),t0=Date.now();
-const opt={method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body};
-if(new Blob([body]).size<60000)opt.keepalive=true;
-const req=fetch(ENDPOINT,opt).catch(()=>{try{if(navigator.sendBeacon)navigator.sendBeacon(ENDPOINT,new Blob([body],{type:'text/plain'}))}catch(_){}});
-await Promise.race([req,wait(4200)]);
+const wait=ms=>new Promise(r=>setTimeout(r,ms)),t0=Date.now(),bodyBytes=new Blob([body]).size;
+let ackedByServer=false,beaconSent=false;
+const sendBeaconOnce=()=>{if(ackedByServer||beaconSent)return;beaconSent=true;try{if(navigator.sendBeacon)navigator.sendBeacon(ENDPOINT,new Blob([body],{type:'text/plain'}))}catch(_){}};
+const onHide=()=>{if(!ackedByServer)sendBeaconOnce()};
+if(typeof window!=='undefined')window.addEventListener('pagehide',onHide,{once:true});
+const tryPost=async()=>{
+const opt={method:'POST',mode:'cors',headers:{'Content-Type':'text/plain'},body};
+if(bodyBytes<60000)opt.keepalive=true;
+const res=await fetch(ENDPOINT,opt);
+if(!res.ok)throw new Error('HTTP '+res.status);
+const j=JSON.parse(await res.text());
+if(!j||j.ok!==true)throw new Error((j&&j.error)||'ERR');
+return true;
+};
+const sendJob=(async()=>{
+const delays=[Math.floor(Math.random()*1500),1200,2500,4500];
+for(let i=0;i<delays.length;i++){
+const d=i===0?delays[0]:delays[i]+Math.floor(Math.random()*800);
+if(d>0)await wait(d);
+if(ackedByServer)return true;
+try{await tryPost();ackedByServer=true;if(typeof window!=='undefined')window.removeEventListener('pagehide',onHide);return true}catch(_){}
+}
+sendBeaconOnce();return false;
+})();
+await Promise.race([sendJob,wait(4200)]);
 const rem=3500-(Date.now()-t0);if(rem>0)await wait(rem)}
 else{msg='테스트 모드: 서버로 전송되지 않았어요. 아래 링크로 응답 파일을 저장할 수 있어요. <br><a download="response.json" href="'+URL.createObjectURL(new Blob([body],{type:'application/json'}))+'">응답 JSON 저장</a>'}
 submitting=false;fin=true;f.hidden=$('.nv').hidden=true;upd();$('#dm').innerHTML=msg;$('#done').hidden=false;scrollTo(0,0)};
